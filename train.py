@@ -22,6 +22,8 @@ from tensorboardX import SummaryWriter
 
 import sosnet_model
 
+
+
 config, unparsed = get_config()
 lib_train = phototour.PhotoTour('.','liberty', download=True, train=True, mode = 'triplets', augment = True, nsamples=409600)
 yos_train = phototour.PhotoTour('.','yosemite', download=True, train=True, mode = 'triplets', augment = True)
@@ -127,6 +129,12 @@ class CNN(nn.Module):
         #print("Detected Classes are: ", train_data.class_to_idx) # classes are detected by folder structure
 
         model = sosnet_model.SOSNet32x32()
+        optimizer = optim.SGD(model.parameters(), lr=0.1, weight_decay=0.0001)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.8)
+
+        seed=42
+        torch.manual_seed(seed)
+        np.random.seed(seed)
          # Create loss objects
         data_loss = data_criterion(config)
         model_loss = model_criterion(config)
@@ -147,11 +155,42 @@ class CNN(nn.Module):
             print("data_a.shape:", data_a.shape)
             print("data_p.shape:", data_p.shape)
             print("data_n.shape:", data_n.shape)
-            pred = model(data_a)
-            print("pred:", pred)
+            out_a, out_p, out_n = model(data_a), model(data_p), model(data_n)
+            print("out_a:", out_a)
+            print("out_p:", out_p)
+            print("out_n:", out_n)
+            loss = F.triplet_margin_loss(out_a, out_p, out_n, margin=2, swap=True)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
+        model.eval()
 
-            exit(0)
+        l = np.empty((0,))
+        d = np.empty((0,))
+        #evaluate the network after each epoch
+        for batch_idx, (data_l, data_r, lbls) in enumerate(test_data_loader):
+            data_l = data_l.unsqueeze(1).float().cuda()
+            data_r = data_r.unsqueeze(1).float().cuda()
+            out_l, out_r = tfeat(data_l), tfeat(data_r)
+            dists = torch.norm(out_l - out_r, 2, 1).detach().cpu().numpy()
+            l = np.hstack((l,lbls.numpy()))
+            d = np.hstack((d,dists))
+            
+        # FPR95 code from Yurun Tian
+        d = torch.from_numpy(d)
+        l = torch.from_numpy(l)
+        dist_pos = d[l==1]
+        dist_neg = d[l!=1]
+        dist_pos,indice = torch.sort(dist_pos)
+        loc_thr = int(np.ceil(dist_pos.numel() * 0.95))
+        thr = dist_pos[loc_thr]
+        fpr95 = float(dist_neg.le(thr).sum())/dist_neg.numel()
+        print(e,fpr95)
+        #fpr_per_epoch.append([e,fpr95])
+        #scheduler.step()
+        #np.savetxt('fpr.txt', np.array(fpr_per_epoch), delimiter=',') 
+        exit(0)
         '''
 
         for data in iter(train_data_loader):
