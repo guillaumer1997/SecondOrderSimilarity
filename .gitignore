@@ -1,0 +1,9 @@
+data/
+train_cl/
+*.zip
+*.bmp
+*.pt
+liberty/
+notredame/
+yosemite/
+
