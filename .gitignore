@@ -1,8 +1,10 @@
 data/
+save/
 train_cl/
 *.zip
 *.bmp
 *.pt
+*.pth
 liberty/
 notredame/
 yosemite/

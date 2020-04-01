@@ -84,6 +84,7 @@ def train():
     # Prepare checkpoint file and model file to save and load from
     checkpoint_file = os.path.join(config.save_dir, "checkpoint.pth")
     bestmodel_file = os.path.join(config.save_dir, "best_model.pth")
+    savemodel_file = os.path.join(config.save_dir, "save_model.pth")
 
     model = sosnet_model.SOSNet32x32().cuda()
     optimizer = optim.SGD(model.parameters(), lr=0.1, weight_decay=0.0001)
@@ -130,6 +131,8 @@ def train():
                     "model": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
                 }, bestmodel_file)
+                # Save
+                torch.save(model.state_dict(), savemodel_file)
 
             optimizer.zero_grad()
             loss.backward()
@@ -142,6 +145,7 @@ def train():
             "model": model.state_dict(),
             "optimizer": optimizer.state_dict(),
         }, checkpoint_file)
+        
 
         model.eval()
 
@@ -173,12 +177,7 @@ def train():
        
 
 
-def init():
-     # Create log directory and save directory if it does not exist
-    if not os.path.exists(config.log_dir):
-        os.makedirs(config.log_dir)
-    if not os.path.exists(config.save_dir):
-        os.makedirs(config.save_dir)
+
 
 if __name__ == "__main__":
     train()
