@@ -72,6 +72,19 @@ def train():
     print("Number of test samples: ", len(test_data))
     #print("Detected Classes are: ", train_data.class_to_idx) # classes are detected by folder structure
 
+    # Create log directory and save directory if it does not exist
+    if not os.path.exists(config.log_dir):
+        os.makedirs(config.log_dir)
+    if not os.path.exists(config.save_dir):
+        os.makedirs(config.save_dir)
+
+    # Initialize training
+    iter_idx = -1  # make counter start at zero
+    best_loss = -1  # to check if best loss
+    # Prepare checkpoint file and model file to save and load from
+    checkpoint_file = os.path.join(config.save_dir, "checkpoint.pth")
+    bestmodel_file = os.path.join(config.save_dir, "best_model.pth")
+
     model = sosnet_model.SOSNet32x32().cuda()
     optimizer = optim.SGD(model.parameters(), lr=0.1, weight_decay=0.0001)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.8)
@@ -106,9 +119,29 @@ def train():
             print("out_p:", out_p)
             print("out_n:", out_n)
             loss = F.triplet_margin_loss(out_a, out_p, out_n, margin=2, swap=True)
+            if best_loss == -1:
+                best_loss = loss
+            if loss < best_loss:
+                best_loss = loss
+                # Save
+                torch.save({
+                    "iter_idx": iter_idx,
+                    "best_loss": best_loss,
+                    "model": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                }, bestmodel_file)
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+        # Save
+        torch.save({
+            "iter_idx": iter_idx,
+            "best_loss": best_loss,
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+        }, checkpoint_file)
 
         model.eval()
 
@@ -138,6 +171,14 @@ def train():
         np.savetxt('fpr.txt', np.array(fpr_per_epoch), delimiter=',') 
 
        
+
+
+def init():
+     # Create log directory and save directory if it does not exist
+    if not os.path.exists(config.log_dir):
+        os.makedirs(config.log_dir)
+    if not os.path.exists(config.save_dir):
+        os.makedirs(config.save_dir)
 
 if __name__ == "__main__":
     train()
