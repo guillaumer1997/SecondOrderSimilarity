@@ -147,8 +147,10 @@ class CNN(nn.Module):
     for epoch in range(config.num_epoch):
         # For each iteration
         prefix = "Training Epoch {:3d}: ".format(epoch)
-
+        print("len(train_data_loader):", len(train_data_loader))
         for batch_idx, (data_a, data_p, data_n) in tqdm(enumerate(train_data_loader)):
+            print("batch_idx:", batch_idx)
+            print("len(train_data_loader):", len(train_data_loader))
             data_a = data_a.unsqueeze(1).float()
             data_p = data_p.unsqueeze(1).float()
             data_n = data_n.unsqueeze(1).float()
@@ -170,9 +172,9 @@ class CNN(nn.Module):
         d = np.empty((0,))
         #evaluate the network after each epoch
         for batch_idx, (data_l, data_r, lbls) in enumerate(test_data_loader):
-            data_l = data_l.unsqueeze(1).float().cuda()
-            data_r = data_r.unsqueeze(1).float().cuda()
-            out_l, out_r = tfeat(data_l), tfeat(data_r)
+            data_l = data_l.unsqueeze(1).float()
+            data_r = data_r.unsqueeze(1).float()
+            out_l, out_r = model(data_l), model(data_r)
             dists = torch.norm(out_l - out_r, 2, 1).detach().cpu().numpy()
             l = np.hstack((l,lbls.numpy()))
             d = np.hstack((d,dists))
@@ -191,98 +193,4 @@ class CNN(nn.Module):
         #scheduler.step()
         #np.savetxt('fpr.txt', np.array(fpr_per_epoch), delimiter=',') 
         exit(0)
-        '''
-
-        for data in iter(train_data_loader):
-            # Counter
-            iter_idx += 1
-
-            # Split the data
-            x, y = data
-
-            # Send data to GPU if we have one
-            if torch.cuda.is_available():
-                x = x.cuda()
-                y = y.cuda()
-
-            # Apply the model to obtain scores (forward pass)
-            logits = model.forward(x)
-            # Compute the loss
-            loss = data_loss(logits, y) + model_loss(model)
-            # Compute gradients
-            loss.backward()
-            # Update parameters
-            optimizer.step()
-            # Zero the parameter gradients in the optimizer
-            optimizer.zero_grad()
-
-            # Monitor results every report interval
-            if iter_idx % config.rep_intv == 0:
-                # Compute accuracy (No gradients required). We'll wrapp this
-                # part so that we prevent torch from computing gradients.
-                with torch.no_grad():
-                    pred = torch.argmax(logits, dim=1)
-                    acc = torch.mean(torch.eq(pred, y).float()) * 100.0
-                # Write loss and accuracy to tensorboard, using keywords `loss`
-                # and `accuracy`.
-                tr_writer.add_scalar("loss", loss, global_step=iter_idx)
-                tr_writer.add_scalar("accuracy", acc, global_step=iter_idx)
-                # Save
-                torch.save({
-                    "iter_idx": iter_idx,
-                    "best_va_acc": best_va_acc,
-                    "model": model.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                }, checkpoint_file)
-
-            # Validate results every validation interval
-            if iter_idx % config.val_intv == 0:
-                # List to contain all losses and accuracies for all the
-                # training batches
-                va_loss = []
-                va_acc = []
-                # Set model for evaluation
-                model = model.eval()
-                for data in va_data_loader:
-
-                    # Split the data
-                    x, y = data
-
-                    # Send data to GPU if we have one
-                    if torch.cuda.is_available():
-                        x = x.cuda()
-                        y = y.cuda()
-
-                    # Apply forward pass to compute the losses
-                    # and accuracies for each of the validation batches
-                    with torch.no_grad():
-                        # Compute logits
-                        logits = model.forward(x)
-                        # Compute loss and store as numpy
-                        loss = data_loss(logits, y) + model_loss(model)
-                        va_loss += [loss.cpu().numpy()]
-                        # Compute accuracy and store as numpy
-                        pred = torch.argmax(logits, dim=1)
-                        acc = torch.mean(torch.eq(pred, y).float()) * 100.0
-                        va_acc += [acc.cpu().numpy()]
-                # Set model back for training
-                model = model.train()
-                # Take average
-                va_loss = np.mean(va_loss)
-                va_acc = np.mean(va_acc)
-
-                # Write to tensorboard using `va_writer`
-                va_writer.add_scalar("loss", va_loss, global_step=iter_idx)
-                va_writer.add_scalar("accuracy", va_acc, global_step=iter_idx)
-                # Check if best accuracy
-                if va_acc > best_va_acc:
-                    best_va_acc = va_acc
-                    # Save best model using torch.save. Similar to previous
-                    # save but at location defined by `bestmodel_file`
-                    torch.save({
-                        "iter_idx": iter_idx,
-                        "best_va_acc": best_va_acc,
-                        "model": model.state_dict(),
-                        "optimizer": optimizer.state_dict(),
-                    }, bestmodel_file)
-        '''
+       
